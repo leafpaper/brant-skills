@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+# 自由统计的本地缓存(--sql 第一次运行时生成,可再生成)
+.agents/skills/brant-why/data/.cache/

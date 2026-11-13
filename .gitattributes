@@ -1,0 +1,2 @@
+# 全部文本文件在仓库里和检出后都用 LF,避免 Windows / Mac 之间换行符来回变
+* text=auto eol=lf

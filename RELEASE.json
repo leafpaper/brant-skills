@@ -1,0 +1,16 @@
+{
+ "exported": "2026-11-14T04:04:44",
+ "data_end": "2026-11-11",
+ "source": "brant-lens c7d408b+未提交改动",
+ "counts": {
+  "trades": 6617,
+  "positions": 886,
+  "ideas": 23531,
+  "rules": 1015,
+  "presets": 113,
+  "transcripts": 890,
+  "daily": 23
+ },
+ "files": 960,
+ "bytes": 70916471
+}
