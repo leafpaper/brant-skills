@@ -22,7 +22,8 @@
   python scripts/why.py --unverified                              只有本人能核实的条目(--unverified ticker|reason 逐条列)
   python scripts/why.py --sql "select …"                          自由统计:对数据库提问(--sql schema 看表和列;只读)
   python scripts/why.py --ref overview                            参考资料:一页结论、已知问题、战绩报告、失误与修正版…(--ref list)
-  python scripts/why.py --check-essay essays/某篇.md               核对文章:每句「原话」都在所标场次的原文里、每个 [[出处]] 都存在
+  python scripts/why.py --check-essay essays/某篇.md               核对文章:每句「原话」都在所标场次的原文里、每个 [[出处]] 都存在(同名 .json 里的图表标注一起核)
+  python scripts/why.py --topic "杠杆|融资"                        按关键词找理念(不知道编号时用)
 事后检验口径:B=入场后 12 周相对 QQQ;C=卖后 4 周相对 QQQ;D=跌破止损线(正股 −15%/杠杆 −25%)后继续拿 vs 当天止损;
 K1–K13=再犯检测。只覆盖判定样本(≤2026-06-30),留出期不给数字。这些是对过去的事后评估,不是现在的买卖建议。
 选项:--kind buy|sell|switch|hold|skip|trade|all(默认 trade=买入+减仓+清仓+其他)  --max N(默认 25 个事件)
@@ -556,6 +557,16 @@ def by_date(db, d):
 DONE = {'已触发-照做', '已触发-没做', '改口', '作废', '过期'}
 
 
+def age_note(d):
+    """数据不会自己更新:最后一天距今超过 3 天就提醒(d 形如 2026-11-11 或 20261111)"""
+    try:
+        d = d if '-' in d else f'{d[:4]}-{d[4:6]}-{d[6:8]}'
+        n = (dt.date.today() - dt.date.fromisoformat(d)).days
+    except (ValueError, TypeError):
+        return ''
+    return f'⚠ 数据截至 {d},距今 {n} 天;之后的直播和操作这里没有,技能不会自己更新。' if n > 3 else ''
+
+
 def by_daily(arg):
     dd = os.path.join(D, 'daily')
     fs = sorted(f for f in os.listdir(dd) if f.endswith('.md')) if os.path.isdir(dd) else []
@@ -574,7 +585,8 @@ def by_daily(arg):
     for f in fs:  # 同一天可能有两场
         with open(os.path.join(dd, f), encoding='utf-8') as fh:
             out.append(fh.read().rstrip())
-    return ['\n\n---\n\n'.join(out)]
+    note = age_note(fs[-1][:8]) if arg == 'latest' else ''
+    return ([note, ''] if note else []) + ['\n\n---\n\n'.join(out)]
 
 
 def by_presets(db, arg):
@@ -589,6 +601,9 @@ def by_presets(db, arg):
     if not ps:
         return [head, '没有记录。']
     out = [head, '(来自每日总结的登记;「待触发」= 他说过、之后的直播里还没见到了结。是否真到价以行情为准)']
+    last = max((p.get('date') or p.get('first') or '' for p in db.presets), default='')
+    if age_note(last):
+        out.append(age_note(last))
     for p in ps:
         out.append(f"- **{p['preset_id']}** {p.get('first')} {p.get('ticker')} · {p.get('kind')}:{p.get('condition')} → {p.get('action')}"
                    f" 〔{p.get('status')}〕  「{p.get('quote')}」({p.get('card_id') or p.get('stem')})")
@@ -787,6 +802,7 @@ def main():
     ap.add_argument('--sql', help='自由统计:只读 select 查询;schema=看有哪些表和列')
     ap.add_argument('--ref', nargs='?', const='list', help='参考资料:不带值=列表;overview/known-issues/track-record/corrections/…')
     ap.add_argument('--check-essay', dest='check_essay', help='核对一篇文章:每句「原话」都在所标场次的原文里、每个 [[出处]] 都存在;「问题 0」才算通过')
+    ap.add_argument('--topic', help='按关键词找理念:不知道理念编号时用(正则,几种说法用 | 连,如 "杠杆|融资")')
     a = ap.parse_args()
     if a.grep:  # 原文搜索不用加载打包数据
         print('\n'.join(by_grep(a)))
@@ -794,7 +810,7 @@ def main():
     global BRIEF, AFTER, HMAX
     BRIEF, AFTER, HMAX = a.brief, a.after, a.hmax
     more = None
-    if a.intro or a.scorecard or a.dossier or a.open_ or a.flag or a.unverified or a.sql or a.ref or a.check_essay:
+    if a.intro or a.scorecard or a.dossier or a.open_ or a.flag or a.unverified or a.sql or a.ref or a.check_essay or a.topic:
         import why_more as more  # 扩展查法放在同目录的 why_more.py
         more.W = sys.modules[__name__]
         if a.sql or a.ref:  # 这两种不用加载打包数据
@@ -804,7 +820,8 @@ def main():
     if more:
         out = (more.intro(db) if a.intro else more.scorecard(db, a.scorecard) if a.scorecard
                else more.dossier(db, a) if a.dossier else more.open_positions(db, a) if a.open_
-               else more.flag(db, a) if a.flag else more.check_essay(db, a) if a.check_essay else more.unverified(db, a))
+               else more.flag(db, a) if a.flag else more.check_essay(db, a) if a.check_essay
+               else more.topic(db, a) if a.topic else more.unverified(db, a))
     elif a.position:
         out = by_position(db, a.position.upper())
     elif a.event:

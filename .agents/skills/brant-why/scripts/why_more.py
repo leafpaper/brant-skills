@@ -85,7 +85,8 @@ def intro(db):
         '## 能做的十一类事(括号里是对应查法)',
         '1. **某笔操作当时为什么这么做**:「2025 年 4 月为什么清特斯拉」「为什么从正股换成 TSLL」「那段时间为什么不买英伟达」'
         '(`TSLA --from 2025-04 --kind sell|switch|skip`、`--position P0580`、`--date 2025-03-24`)',
-        '2. **某条理念怎么说、怎么变的**:「杠杆什么时候加什么时候去」「这条是自己的做法还是讲给听众的」(`--idea P7`)',
+        '2. **某条理念怎么说、怎么变的**:「杠杆什么时候加什么时候去」「这条是自己的做法还是讲给听众的」'
+        '(`--topic "杠杆|融资"` 按关键词找到理念,`--idea P7` 看全文)',
         '3. **哪类做法赚钱、哪类在亏**:按买入理由、行情、年份、把握、仓位大小分组的成绩单;说「不买」准不准;'
         '清仓和减仓哪个有信息量(`--scorecard`,可只看一块:`--scorecard 选股|离场|硬扛|大方向|期货|言行`)',
         '4. **一只票的完整档案**:看法怎么变、哪里改过口、每段持仓的结果、相关的老毛病、还没了结的预设(`--dossier TSLA`)',
@@ -95,10 +96,11 @@ def intro(db):
         '8. **临时想到的统计**:固定查法答不了的,直接对数据库提问,如「2024 年半导体买入按月胜率」(`--sql`,先 `--sql schema` 看有哪些表)',
         '9. **数据记错了、想补充**:说一句「这笔不对,实际是……」就记下来,回流给整理者改源头(`--flag E03881 --note "……"`;'
         '`--unverified` 列出只有本人能核实的条目)',
-        '10. **(可选)和真实持仓对照**:会话里接了长桥、IBKR、Robinhood 这类券商连接器的话,可以只读地调出当前持仓和成交记录,'
-        '逐只对照这里的历史档案、未了结预设,并核对数据里「还没见平仓」的仓位(`--open`)。不接也不影响其他功能;只读,不下单',
+        '10. **(可选)接券商的持仓和行情**:会话里接了长桥、IBKR、Robinhood 这类券商连接器的话,可以只读地调出当前持仓,'
+        '逐只对照这里的历史档案和未了结预设(`--open` 对账);也可以取行情,看预设的价位到了没有、某笔之后走成什么样、给文章配走势图。'
+        '不接也不影响其他功能;只读,不下单',
         '11. **写长文**:「把 2022 年熊市那段写成一篇文章」「写一篇我在特斯拉上这几年」——按时间拉出操作、原话和复盘,'
-        '写成带出处的心路历程长文;每句引文都自动核对是不是逐字的原话(`--check-essay 文章.md`,「问题 0」才算过)',
+        '写成带出处的心路历程长文;每句引文都自动核对是不是逐字的原话(`--check-essay 文章.md`,「问题 0」才算过);有行情就能配走势图',
         '',
         '## 建议从这里开始',
         '- `--ref overview`:一页结论,十条最重要的发现,每条带数字和出处',
@@ -109,7 +111,7 @@ def intro(db):
         '## 做不了的',
         '- 不给现在的买卖建议,不帮忙筛股票:单条规则回测 7 项、机械规则检验 13 项都没有一项通过,现在拿这些规则选股等于用没验证的东西',
         '- 不知道实盘:只有展示账户喊单和直播里说的;期权一律按正股近似,期权本身的盈亏没算',
-        '- 不会自己更新:数据定格在导出那天(见上面的日期),新数据要整理者重新导出',
+        '- 不会自己更新:数据定格在导出那天(见上面的日期),新数据要整理者重新导出' + (f"。{W.age_note(dates[-1])}" if dates and W.age_note(dates[-1]) else ''),
         '- 临时分组的统计只能当线索:样本常常很小,不能推翻上面的正式检验结论',
     ]
     return out
@@ -386,6 +388,8 @@ def open_positions(db, a):
            '「没见平仓」只表示之后的直播和喊单里没记到卖出:可能真的还拿着,也可能卖了没说,或者卖出没对上这一段。'
            '这是展示账户喊单和直播言论拼出来的,不是任何券商账户的真实持仓,也不记股数。',
            '和真实持仓不一致的,用 `--flag 持仓段号 --note "已于某日清仓 / 实际没买"` 记一句。']
+    if W.age_note(asof):
+        out.append(W.age_note(asof))
     for p in ps[:a.max]:
         pre = sum(1 for x in db.presets if x.get('status') not in W.DONE
                   and p['underlying'] in {W.CN.get(y.strip(), y.strip().upper()) for y in (x.get('ticker') or '').split('/')})
@@ -717,31 +721,64 @@ def check_essay(db, a):
     known = set(db.ideas) | {c['card_id'] for t in db.trades for c in t['cards']} | {h['card_id'] for h in db.hind} \
         | {v['card_id'] for vs in db.views.values() for v in vs}
     cards_dir = os.path.join(W.project_root(), 'cards')  # 在 brant-lens 项目里能直接对卡片文件
-    out, bad, soft, nosrc, n, srcs = [f'# 核对 {path}'], 0, 0, 0, 0, set()
+    out, srcs = [f'# 核对 {path}'], set()
+    c = {'bad': 0, 'soft': 0, 'nosrc': 0, 'n': 0, 'marks': 0}
+
+    def check_quote(q, stem, where=''):
+        c['n'] += 1
+        nq = _NORM(q)
+        if not nq or re.fullmatch(r'[\W\w]{0,3}#\S*', q) or q == '场次#卡号':  # 讲解出处写法的占位词,不是引文
+            return
+        t = raw(stem) if stem else None
+        if t is not None and nq in _NORM(t):
+            return
+        hit = everywhere(nq)
+        if hit and not stem:  # 标题、摘要里重复引用、没标出处的:原话确实存在,只提示
+            c['nosrc'] += 1
+            out.append(f"没标出处{where}「{_clip(q, 40)}」:原话在 {'、'.join(hit)}(标题、速览里重复引用可以不标;正文和图表标注里要补上)")
+        elif hit:
+            c['soft'] += 1
+            out.append(f"⚠ 出处标错{where}「{_clip(q, 40)}」:标的是 {stem},实际在 {'、'.join(hit)} → 改出处")
+        else:
+            c['bad'] += 1
+            out.append(f"❌ 没找到{where}「{_clip(q, 40)}」(标的出处 {stem or '没标'})→ 不是原话:改成逐字的原话,或去掉「」")
+
     for line in art.splitlines():
         for m in re.finditer(r'\[\[([^\]]+)\]\]', line):
             srcs.add(m[1])
         for m in re.finditer(r'「([^「」]+)」', line):
-            q = m[1]
-            n += 1
-            nq = _NORM(q)
-            if not nq or re.fullmatch(r'[\W\w]{0,3}#\S*', q) or q == '场次#卡号':  # 讲解出处写法的占位词,不是引文
-                continue
             after = re.search(r'\[\[([^\]]+)\]\]', line[m.end():])
-            stem = after[1].split('#')[0].split(' ')[0] if after else None
-            t = raw(stem) if stem else None
-            if t is not None and nq in _NORM(t):
-                continue
-            hit = everywhere(nq)
-            if hit and not stem:  # 标题、摘要里重复引用、没标出处的:原话确实存在,只提示
-                nosrc += 1
-                out.append(f"没标出处「{_clip(q, 40)}」:原话在 {'、'.join(hit)}(标题、速览里重复引用可以不标;正文里要补上)")
-            elif hit:
-                soft += 1
-                out.append(f"⚠ 出处标错「{_clip(q, 40)}」:标的是 {stem},实际在 {'、'.join(hit)} → 改出处")
-            else:
-                bad += 1
-                out.append(f"❌ 没找到「{_clip(q, 40)}」(标的出处 {stem or '没标'})→ 不是原话:改成逐字的原话,或去掉「」")
+            check_quote(m[1], after[1].split('#')[0].split(' ')[0] if after else None)
+    # 同名 .json 里的图表:标注(marks)的原话和出处照样核;走势数据只查格式
+    jp = os.path.splitext(path)[0] + '.json'
+    if os.path.exists(jp):
+        try:
+            with open(jp, encoding='utf-8') as f:
+                charts = json.load(f).get('charts') or {}
+        except ValueError as e:
+            charts = {}
+            c['bad'] += 1
+            out.append(f'❌ 图表文件不是合法 JSON:{e}')
+        for name, ch in charts.items():
+            ser = ch.get('series') or []
+            dates = []
+            if ch.get('kind', 'line') == 'line':
+                dates = [p[0] for p in ser if isinstance(p, list) and len(p) == 2 and isinstance(p[1], (int, float))]
+                if not ser or len(dates) != len(ser) or dates != sorted(dates):
+                    c['bad'] += 1
+                    out.append(f'❌ 图表 {name}:series 要是按日期升序的 [日期, 收盘价] 列表')
+                if not ch.get('note'):
+                    out.append(f'? 图表 {name}:note 里要写明行情来源和是否复权')
+            for mk in ch.get('marks') or []:
+                c['marks'] += 1
+                s = mk.get('src') or ''
+                if s:
+                    srcs.add(s)
+                check_quote(mk.get('q') or '', s.split('#')[0].split(' ')[0] if s else None, f"(图表 {name} 标注 {mk.get('d')})")
+                if dates and mk.get('d') and not dates[0] <= mk['d'] <= dates[-1]:
+                    out.append(f"? 图表 {name}:标注日期 {mk['d']} 不在走势数据范围 {dates[0]} ~ {dates[-1]} 里")
+            if '{{chart ' + name + '}}' not in art:
+                out.append(f'? 图表 {name} 在正文里没有用到(正文里单独一行写 {{{{chart {name}}}}} 才会显示)')
     for s in sorted(srcs):
         stem = s.split('#')[0].split(' ')[0]
         if '#' in s:
@@ -760,11 +797,50 @@ def check_essay(db, a):
             t = raw(stem)
             ok = t is not None and len(s.split(' ')) > 1 and ('[' + s.split(' ')[1] + ']') in t
         if not ok:
-            bad += 1
+            c['bad'] += 1
             out.append(f'❌ 出处不存在 [[{s}]]')
-    out.append(f'原话 {n} 处 · 出处 {len(srcs)} 个 · 没标出处 {nosrc} 处 · 出处标错 {soft} 处 · 问题 {bad + soft}')
-    if bad + soft == 0:
+    out.append(f"原话 {c['n']} 处" + (f"(含图表标注 {c['marks']} 处)" if c['marks'] else '')
+               + f" · 出处 {len(srcs)} 个 · 没标出处 {c['nosrc']} 处 · 出处标错 {c['soft']} 处 · 问题 {c['bad'] + c['soft']}")
+    if c['bad'] + c['soft'] == 0:
         out.append('通过:每句标了出处的原话都在所标场次的原文里,出处都存在。')
+    return out
+
+
+# ---------------------------------------------------------------- 按关键词找理念
+def topic(db, a):
+    try:
+        pat = re.compile(a.topic, re.I)
+    except re.error as e:
+        return [f'关键词不是合法的正则({e})。几种说法用 | 连,如:杠杆|融资']
+    by_name = [r for r in db.rules.values() if pat.search(r.get('name') or '')]
+    seen = {r['id'] for r in by_name}
+    by_stmt = [r for r in db.rules.values() if r['id'] not in seen and pat.search(r.get('statement') or '')]
+    seen |= {r['id'] for r in by_stmt}
+    text = lambda i: (i.get('rule') or '') + (i.get('quote') or '')
+    said = collections.Counter(i['rule_id'] for i in db.ideas.values() if i.get('rule_id') and pat.search(text(i)))
+    n_new = sum(1 for i in db.ideas.values() if not i.get('rule_id') and pat.search(text(i)))
+
+    def line(r, extra=''):
+        st = r.get('status') if r.get('judged') else '长尾:讲得少,没判有效期'
+        g = f",证据等级 {r['grade_v2']}" if r.get('grade_v2') else ''
+        return (f"- **{r['id']}** {r.get('name')}〔{st}〕:讲过 {r.get('n') or 0} 次({(r.get('first') or '?')[:7]} ~ {(r.get('last') or '?')[:7]}){g}{extra}"
+                + ('〔不算他的理念,见 --idea〕' if r.get('skill_exclude') else ''))
+    key = lambda r: (-(r.get('n') or 0), r['id'])
+    out = [f'# 和「{a.topic}」有关的理念', '(往下查:`--idea 编号` 看完整陈述、有效期和每次的原话;`--idea 编号 --from 2025` 限定时间)']
+    if by_name:
+        out.append(f'\n## 名字里有这个词的 {len(by_name)} 条' + (f'(列讲得最多的 {a.max} 条)' if len(by_name) > a.max else ''))
+        out += [line(r) for r in sorted(by_name, key=key)[:a.max]]
+    if by_stmt:
+        out.append(f'\n## 陈述里提到的 {len(by_stmt)} 条' + (f'(列讲得最多的 {a.max} 条)' if len(by_stmt) > a.max else ''))
+        out += [line(r) for r in sorted(by_stmt, key=key)[:a.max]]
+    rest = [(rid, n) for rid, n in said.most_common() if rid not in seen and rid in db.rules and n >= 5][:5]
+    if rest:
+        out.append('\n## 名字和陈述没提、但原话里常带这个词的')
+        out += [line(db.rules[rid], f';其中 {n} 次原话带这个词') for rid, n in rest]
+    if n_new:
+        out.append(f'\n另有 {n_new} 条带这个词的原话还没归进台账(多是 2026-07 以后的新说法);用 `--grep "{a.topic}" --from 2026-07` 看原文。')
+    if len(out) == 2:
+        out.append('没有找到。换个说法(几种写法用 | 连),或用 `--grep` 直接搜原文。')
     return out
 
 
