@@ -1,27 +1,87 @@
 {
   "_note": "参考资料清单。file = 发行包里 references/ 下的文件名;src = 这份资料在 brant-lens 项目里的位置(项目里不另存拷贝,why.py --ref 会去那里找)。build_release.py 按这张表拷贝。",
   "refs": [
-    {"name": "overview", "file": "overview.md", "title": "一页结论:十条最重要的发现",
-     "when": "第一次用,或想快速知道整体结论时先读"},
-    {"name": "known-issues", "file": "known-issues.md", "title": "已知的数据问题",
-     "when": "引用战绩数字之前,或发现某笔记录对不上时读"},
-    {"name": "glossary", "file": "glossary.md", "src": "CONTEXT.md", "title": "术语表",
-     "when": "看不懂判定样本、留出期、B/C/D 口径、证据等级这些词时读"},
-    {"name": "track-record", "file": "track-record.md", "src": "skill/references/track-record.md", "title": "战绩检验报告(原版,正式结论)",
-     "when": "问整体战绩、四个维度的细节和稳健性时读"},
-    {"name": "track-record-v2", "file": "track-record-v2.md", "src": "docs/track-record-v2-report.md", "title": "战绩修订版检验(清理数据后重算,和原版并列)",
-     "when": "引用离场(C)、硬扛(D)时要一起看"},
-    {"name": "corrections", "file": "corrections.md", "src": "skill/references/corrections.md", "title": "失误与修正版(35 类失误、数据对照、修正版、检查题)",
-     "when": "问某个老毛病、自评和数据差在哪、修正版怎么写时读"},
-    {"name": "rule-tests", "file": "rule-tests.md", "src": "docs/stage4.5-report.md", "title": "规则泛化检验报告(13 条机械规则在 794 只大盘股上的检验)",
-     "when": "问某条经验(困境反转、跟踪止损、压力位减仓、大佬持仓…)有没有数据支持时读;文件大,按规则编号 G1–G13 找小节"},
-    {"name": "stage4-report", "file": "stage4-report.md", "src": "docs/stage4-report.md", "title": "理念台账与失误清单阶段报告(单条回测 T1–T7、局限)",
-     "when": "问单条回测、失误聚类的局限时读"},
-    {"name": "ledger-report", "file": "ledger-report.md", "src": "docs/ledger-v2-report.md", "title": "理念台账 v2 说明(怎么归并、怎么判有效期、已知遗留)",
-     "when": "问理念台账怎么来的、可信度如何时读"},
-    {"name": "rule-catalog", "file": "rule-catalog.md", "src": "docs/rule-catalog.md", "title": "理念目录(全部理念的编号和名字,按族)",
-     "when": "不知道某条理念的编号时来这里找;文件大,按关键词搜"},
-    {"name": "current-stance", "file": "current-stance.md", "src": "skill/current-stance.md", "title": "当前立场(截至最后一场直播;留出期,观点未经检验)",
-     "when": "问最近怎么看时读;超过 5 个交易日没更新要说明可能已变"}
+    {
+      "name": "overview",
+      "file": "overview.md",
+      "title": "一页结论:十条最重要的发现",
+      "when": "第一次用,或想快速知道整体结论时先读"
+    },
+    {
+      "name": "known-issues",
+      "file": "known-issues.md",
+      "title": "已知的数据问题",
+      "when": "引用战绩数字之前,或发现某笔记录对不上时读"
+    },
+    {
+      "name": "glossary",
+      "file": "glossary.md",
+      "src": "CONTEXT.md",
+      "title": "术语表",
+      "when": "看不懂判定样本、留出期、B/C/D 口径、证据等级这些词时读"
+    },
+    {
+      "name": "track-record",
+      "file": "track-record.md",
+      "src": "skill/references/track-record.md",
+      "title": "战绩检验报告(原版,正式结论)",
+      "when": "问整体战绩、四个维度的细节和稳健性时读"
+    },
+    {
+      "name": "track-record-v3",
+      "file": "track-record-v3.md",
+      "src": "docs/track-record-v3-report.md",
+      "title": "战绩修订版 3 检验(改正期货开空、反向 ETF 方向、补全 TSLL 之后重算;现在查询输出用的就是这一版)",
+      "when": "引用四个维度的数字、或发现查询输出和别的报告数字不一样时读;里面有原版、修订版 2、修订版 3 的并列表"
+    },
+    {
+      "name": "track-record-v2",
+      "file": "track-record-v2.md",
+      "src": "docs/track-record-v2-report.md",
+      "title": "战绩修订版 2 检验(清掉重复场次和别的老师讲话段之后重算)",
+      "when": "想知道离场(C)为什么从「优势」变成「无定论」时读"
+    },
+    {
+      "name": "corrections",
+      "file": "corrections.md",
+      "src": "skill/references/corrections.md",
+      "title": "失误与修正版(35 类失误、数据对照、修正版、检查题)",
+      "when": "问某个老毛病、自评和数据差在哪、修正版怎么写时读"
+    },
+    {
+      "name": "rule-tests",
+      "file": "rule-tests.md",
+      "src": "docs/stage4.5-report.md",
+      "title": "规则泛化检验报告(13 条机械规则在 794 只大盘股上的检验)",
+      "when": "问某条经验(困境反转、跟踪止损、压力位减仓、大佬持仓…)有没有数据支持时读;文件大,按规则编号 G1–G13 找小节"
+    },
+    {
+      "name": "stage4-report",
+      "file": "stage4-report.md",
+      "src": "docs/stage4-report.md",
+      "title": "理念台账与失误清单阶段报告(单条回测 T1–T7、局限)",
+      "when": "问单条回测、失误聚类的局限时读"
+    },
+    {
+      "name": "ledger-report",
+      "file": "ledger-report.md",
+      "src": "docs/ledger-v2-report.md",
+      "title": "理念台账 v2 说明(怎么归并、怎么判有效期、已知遗留)",
+      "when": "问理念台账怎么来的、可信度如何时读"
+    },
+    {
+      "name": "rule-catalog",
+      "file": "rule-catalog.md",
+      "src": "docs/rule-catalog.md",
+      "title": "理念目录(全部理念的编号和名字,按族)",
+      "when": "不知道某条理念的编号时来这里找;文件大,按关键词搜"
+    },
+    {
+      "name": "current-stance",
+      "file": "current-stance.md",
+      "src": "skill/current-stance.md",
+      "title": "当前立场(截至最后一场直播;留出期,观点未经检验)",
+      "when": "问最近怎么看时读;超过 5 个交易日没更新要说明可能已变"
+    }
   ]
 }

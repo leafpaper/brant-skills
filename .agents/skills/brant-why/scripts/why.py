@@ -18,7 +18,7 @@
   python scripts/why.py --scorecard                               分类成绩单:哪类买入/离场/扛单赚钱(--scorecard 选股|离场|硬扛|大方向|期货|言行 只看一块)
   python scripts/why.py --dossier TSLA                            个股档案:一只票的看法演变、持仓段结果、复盘、未了结预设
   python scripts/why.py --open                                    数据里还没见平仓的持仓段(和真实持仓对账用;--open all 不限最近 180 天)
-  python scripts/why.py --flag E03881 --note "实际是 TSLL"         更正入口:记一条更正/补充(--tag 事后补充;--flag list 看已记的)
+  python scripts/why.py --flag E03882 --note "实际是 TSLL"         更正入口:记一条更正/补充(--tag 事后补充;--flag list 看已记的)
   python scripts/why.py --unverified                              只有本人能核实的条目(--unverified ticker|reason 逐条列)
   python scripts/why.py --sql "select …"                          自由统计:对数据库提问(--sql schema 看表和列;只读)
   python scripts/why.py --ref overview                            参考资料:一页结论、已知问题、战绩报告、失误与修正版…(--ref list)
@@ -45,8 +45,10 @@ CN = {'特斯拉': 'TSLA', '英伟达': 'NVDA', '苹果': 'AAPL', '微软': 'MSF
       '小盘股': 'IWM', '迪士尼': 'DIS', '耐克': 'NKE', '星巴克': 'SBUX', '可口可乐': 'KO', '伯克希尔': 'BRK.B'}
 MARKET = {'大盘', '纳指', '标普', '三大指数', '美股', 'QQQ', 'SPY', 'NQ', 'MNQ', 'ES', '道指', '纳斯达克'}
 KIND = {'open': '买入/开仓', 'reduce': '减仓', 'exit': '清仓', 'hold': '持有', 'watch': '观望', 'avoid': '不买', 'other': '其他'}
+KIND_SHORT = {'open': '开空/加空', 'reduce': '减空单', 'exit': '平空单', 'hold': '空单持有'}  # 做空一侧的叫法
 ACT = {'buy': '买入', 'add': '加仓', 'sell': '卖出', 'trim': '减仓', 'hold': '持有', 'watch': '观望', 'avoid': '回避',
-       'buy_call': '买 call', 'sell_put': '卖 put', 'buy_put': '买 put', 'sell_call': '卖 call'}
+       'buy_call': '买 call', 'sell_put': '卖 put', 'buy_put': '买 put', 'sell_call': '卖 call',
+       'short': '开空/加空', 'trim_short': '减空单', 'cover': '平空单', 'hold_short': '空单持有'}
 KINDSET = {'buy': {'open'}, 'sell': {'reduce', 'exit'}, 'hold': {'hold'}, 'skip': {'watch', 'avoid'},
            'trade': {'open', 'reduce', 'exit', 'other'}, 'all': set(KIND), 'switch': set(KIND)}
 
@@ -241,7 +243,13 @@ def show_trade(db, t, names, ctx_done):
     tool = '期权' if t['option'] else '杠杆ETF' if t['levered'] else \
         {'macro': '指数/期货/宏观品种', 'crypto': '加密货币', 'non_us': '非美股', 'basket': '一篮子'}.get(t.get('scope'), '正股')
     hint = exit_hint(t) if t['kind'] in ('reduce', 'exit') else ''
-    out = [f"### {t['date']} {t.get('time') or ''} · {t['ticker']} {side}{KIND.get(t['kind'], t['kind'])}({tool}) · {t['event_id']}{pid} {hint}"]
+    if t['side'] == 'short' and t['option']:  # 买 put 这类:叫「开空」会误会成卖空正股
+        what = '看跌期权' + KIND.get(t['kind'], t['kind'])
+    elif t['side'] == 'short' and t['kind'] in KIND_SHORT:
+        what = KIND_SHORT[t['kind']]
+    else:
+        what = side + KIND.get(t['kind'], t['kind'])
+    out = [f"### {t['date']} {t.get('time') or ''} · {t['ticker']} {what}({tool}) · {t['event_id']}{pid} {hint}"]
     if t.get('caution'):
         out.append(f"- ⚠ 事件表标记:{t['caution']}(标的或价格没核实,引用时要说明)")
     for c in t['cards']:
@@ -330,7 +338,8 @@ def show_positions(db, pids):
             continue
         end = f"{p['end']}({'明确平仓' if p['end_kind'] == 'explicit' else p['end_kind']})" if p['end'] else f"未见平仓(最后一次提到 {p['last_evidence']})"
         evs = [db.tr[e] for e in p['event_ids'] if e in db.tr]
-        mix = collections.Counter('期权' if e['option'] else '杠杆ETF' if e['levered'] else '正股' for e in evs)
+        mix = collections.Counter('期权' if e['option'] else '杠杆ETF' if e['levered'] else
+                                  {'macro': '指数/期货', 'crypto': '加密货币'}.get(e.get('scope'), '正股') for e in evs)
         out.append(f"- {pid} {p['ticker']} {'做空' if p['side'] == 'short' else '做多'}:"
                    f"{p['start']} 开仓 → {end};加仓 {p['n_adds']} 次;入场价约 {p['entry_price']};共 {len(p['event_ids'])} 个事件"
                    f"({'、'.join(f'{k}{v}' for k, v in mix.items())});事件表不记股数,「清仓」是否全部卖光要看原话")
