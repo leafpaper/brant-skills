@@ -84,7 +84,7 @@ def intro(db):
         '',
         '## 能做的十一类事(括号里是对应查法)',
         '1. **某笔操作当时为什么这么做**:「2025 年 4 月为什么清特斯拉」「为什么从正股换成 TSLL」「那段时间为什么不买英伟达」'
-        '(`TSLA --from 2025-04 --kind sell|switch|skip`、`--position P0580`、`--date 2025-03-24`)',
+        '(`TSLA --from 2025-04 --kind sell|switch|skip`、`--position P0572`、`--date 2025-03-24`)',
         '2. **某条理念怎么说、怎么变的**:「杠杆什么时候加什么时候去」「这条是自己的做法还是讲给听众的」'
         '(`--topic "杠杆|融资"` 按关键词找到理念,`--idea P7` 看全文)',
         '3. **哪类做法赚钱、哪类在亏**:按买入理由、行情、年份、把握、仓位大小分组的成绩单;说「不买」准不准;'
@@ -94,7 +94,7 @@ def intro(db):
         '6. **最近的直播和计划**:最新一场讲了什么、设过哪些「跌到 X 加」「破 Y 认错」、后来照做没有(`--daily`、`--presets`)',
         '7. **原文里找一句话、一个人、一件往事**:全部直播逐字稿和喊单全文搜索,自动带上转写听错的写法(`--grep "强平|爆仓"`)',
         '8. **临时想到的统计**:固定查法答不了的,直接对数据库提问,如「2024 年半导体买入按月胜率」(`--sql`,先 `--sql schema` 看有哪些表)',
-        '9. **数据记错了、想补充**:说一句「这笔不对,实际是……」就记下来,回流给整理者改源头(`--flag E03882 --note "……"`;'
+        '9. **数据记错了、想补充**:说一句「这笔不对,实际是……」就记下来,回流给整理者改源头(`--flag E03928 --note "……"`;'
         '`--unverified` 列出只有本人能核实的条目)',
         '10. **(可选)接券商的持仓和行情**:会话里接了长桥、IBKR、Robinhood 这类券商连接器的话,可以只读地调出当前持仓,'
         '逐只对照这里的历史档案和未了结预设(`--open` 对账);也可以取行情,看预设的价位到了没有、某笔之后走成什么样、给文章配走势图。'
@@ -137,7 +137,7 @@ def scorecard(db, arg):
     if arg not in (None, 'all') and not want:
         return [f'没有「{arg}」这一块。可选:总表、选股、离场、硬扛、大方向、期货、言行;不带值看全部。']
     on = lambda k: want in (None, k)
-    out = ['# 分类成绩单', f"{sc['sample']}。数字用修订版 3(2026-11-14 改正期货开空、反向 ETF 方向、补全 TSLL 之后按同一口径重算,见 --ref track-record-v3),和原版不同的地方并列写出。",
+    out = ['# 分类成绩单', f"{sc['sample']}。数字用修订版 4(2026-11-15 直播里口头的买卖逐张回原话复核、正股/期权/杠杆 ETF 分开配对、选股和硬扛按持仓组算,见 --ref track-record-v4),和原版不同的地方并列写出。",
            '**读法**:只有「正式判定」能下结论;其余全是事后分组〔探索性〕——样本常常很小、区间多数跨 0,只能当待验证的线索,'
            '不能当规则,更不能当现在的买卖依据。「跨 0」= 现有数据分不出好坏。']
     if on('总表'):
@@ -199,8 +199,12 @@ def scorecard(db, arg):
         ae = sc.get('after_exit') or {}
         if ae.get('K1'):
             k1 = ae['K1']
-            out.append(f"- 大赚清仓后又追高买回(再犯检测 K1):判定样本内 {k1['n']} 次,买回后 12 周相对 QQQ 平均 {k1['mean']:+.1%}{_ci(k1.get('ci'))};"
-                       f"其余买入平均 {k1.get('others', 0):+.1%}")
+            if k1.get('ci') is None or k1.get('others') is None:  # 修订版 4 起样本不足
+                out.append(f"- 大赚清仓后又追高买回(再犯检测 K1):判定样本内只有 {k1.get('n_all', k1['n'])} 次,样本不足,"
+                           f"不给平均数(修订版 3 及以前是 20 次、显著跑输,那时的「清仓」不少是卖期权或对观众说的话记成的)")
+            else:
+                out.append(f"- 大赚清仓后又追高买回(再犯检测 K1):判定样本内 {k1['n']} 次,买回后 12 周相对 QQQ 平均 {k1['mean']:+.1%}{_ci(k1.get('ci'))};"
+                           f"其余买入平均 {k1.get('others', 0):+.1%}")
         if ae.get('K9'):
             k9 = ae['K9']
             out.append(f"- 浮盈 ≥10% 却一股没减、最后吐掉一半以上(K9):{k9['den']} 次清仓里 {k9['n']} 次,其中 {k9.get('turned_loss')} 次转亏,"
@@ -272,8 +276,8 @@ def scorecard(db, arg):
         if done + miss:
             out.append(f"- 条件到了的 {done + miss} 条里,照做 {done} 条({done / (done + miss):.0%}),没做 {miss} 条;另有 {cnt.get('改口', 0)} 条中途改口")
         out.append('- 逐条看:`--presets all`')
-    out.append('\n---\n口径与局限:期权一律按正股近似;2023-10 以前价格是收盘近似;42% 的持仓段没有明确清仓;'
-               '战绩依据展示账户喊单和直播言论,不是实盘。详细报告:`--ref track-record`(原版)、`--ref track-record-v3`(现在用的修订版);已知数据问题:`--ref known-issues`。')
+    out.append('\n---\n口径与局限:期权一律按正股近似;2023-10 以前价格是收盘近似;49% 的选股样本(持仓组)没有明确清仓;'
+               '战绩依据展示账户喊单和直播言论,不是实盘。详细报告:`--ref track-record`(原版)、`--ref track-record-v4`(现在用的修订版);已知数据问题:`--ref known-issues`。')
     return out
 
 
@@ -304,22 +308,28 @@ def dossier(db, a):
                 key=lambda p: p['start'])
     if ps:
         out.append(f'\n## 持仓段 {len(ps)} 段' + (f'(只列最近 {a.max} 段)' if len(ps) > a.max else ''))
-        bs = [p['B']['excess'] for p in ps if p.get('B')]
-        if bs:
-            out.append(f"- 其中 {len(bs)} 段有 12 周结果(只算到 {JUDGE_END}):相对 QQQ 平均 {sum(bs) / len(bs):+.1%},"
-                       f"{sum(x > 0 for x in bs)}/{len(bs)} 段跑赢")
-        for p in ps[-a.max:]:
-            end = (f"{p['end']}({'明确平仓' if p['end_kind'] == 'explicit' else p['end_kind']})" if p['end']
-                   else f"未见平仓(最后提到 {p['last_evidence']})")
-            bits = [f"{p['position_id']} {p['ticker']} {'做空' if p['side'] == 'short' else '做多'}({_pos_tool(db, p)})", f"{p['start']} → {end}"]
+        bg = {}  # 修订版 4:同一持仓组只算一次
+        for p in ps:
             if p.get('B'):
-                bits.append(f"12 周超额 {p['B']['excess']:+.1%}")
+                bg.setdefault(p['B'].get('by_group') or p.get('group_id') or p['position_id'], p['B']['excess'])
+        bs = list(bg.values())
+        if bs:
+            out.append(f"- 有 12 周结果的 {len(bs)} 组(同一持仓组的几段只算一次,只算到 {JUDGE_END}):相对 QQQ 平均 {sum(bs) / len(bs):+.1%},"
+                       f"{sum(x > 0 for x in bs)}/{len(bs)} 组跑赢")
+        for p in ps[-a.max:]:
+            ek = {'explicit': '明确平仓', 'switch': '转出到 ' + '、'.join(p.get('switch_to') or [])}.get(p['end_kind'], p['end_kind'])
+            end = (f"{p['end']}({ek})" if p['end'] else f"未见平仓(最后提到 {p['last_evidence']})")
+            bits = [f"{p['position_id']} {p['ticker']} {'做空' if p['side'] == 'short' else '做多'}({_pos_tool(db, p)})", f"{p['start']} → {end}"]
+            if p.get('test_exclude'):
+                bits.append({'intraday': '日内,不进检验', 'option_unclosed': '期权没平仓记录,不进检验'}.get(p['test_exclude'], p['test_exclude']))
+            if p.get('B'):
+                bits.append(f"12 周超额 {p['B']['excess']:+.1%}" + (f"(按组 {p['B']['by_group']})" if p['B'].get('by_group') else ''))
             elif p.get('sample') == '留出':
                 bits.append('留出期,不给数字')
             if p.get('D'):
                 dd = p['D']
                 bits.append(f"跌破止损线后继续拿({dd['trigger']} 触发" + (f",最大浮亏 {dd['max_dd']:.0%}" if dd.get('max_dd') is not None else '')
-                            + (',已回本' if dd.get('recovered') else ',没回本') + ')')
+                            + (',已回本' if dd.get('recovered') else ',没回本') + (f",按组 {dd['by_group']}" if dd.get('by_group') else '') + ')')
             ks = collections.Counter(k['k'] + ' ' + (db.mis.get(k['b']) or {}).get('name', k['b']) for k in p.get('kchecks') or [])
             if ks:
                 bits.append('再犯检测:' + '、'.join(k + (f' ×{n}' if n > 1 else '') for k, n in ks.items()))

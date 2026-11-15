@@ -28,11 +28,18 @@
       "when": "问整体战绩、四个维度的细节和稳健性时读"
     },
     {
+      "name": "track-record-v4",
+      "file": "track-record-v4.md",
+      "src": "docs/track-record-v4-report.md",
+      "title": "战绩修订版 4 检验(直播买卖逐张复核、按工具配对、选股和硬扛按持仓组之后重算;现在查询输出用的就是这一版)",
+      "when": "引用四个维度的数字、或发现查询输出和别的报告数字不一样时读;里面有原版、修订版 2、3、4 的并列表和三段抽查"
+    },
+    {
       "name": "track-record-v3",
       "file": "track-record-v3.md",
       "src": "docs/track-record-v3-report.md",
-      "title": "战绩修订版 3 检验(改正期货开空、反向 ETF 方向、补全 TSLL 之后重算;现在查询输出用的就是这一版)",
-      "when": "引用四个维度的数字、或发现查询输出和别的报告数字不一样时读;里面有原版、修订版 2、修订版 3 的并列表"
+      "title": "战绩修订版 3 检验(改正期货开空、反向 ETF 方向、补全 TSLL 之后重算)",
+      "when": "想知道 2026-11-14 那次改正(期货开空、反向 ETF、TSLL)改了什么时读"
     },
     {
       "name": "track-record-v2",

@@ -5,8 +5,8 @@
   python scripts/why.py 特斯拉 --from 2025-03 --kind sell          只看卖出(减仓/清仓,含止盈止损)
   python scripts/why.py TSLA --from 2025 --kind switch            只看转仓(他说了换仓,或同场一卖一买)
   python scripts/why.py TSLA --from 2025-03 --kind skip           他为什么不买/观望(avoid/watch)
-  python scripts/why.py --position P0612                          一整段持仓:从开仓到平仓每一步
-  python scripts/why.py --event E04567                            单个操作
+  python scripts/why.py --position P0572                          一整段持仓:从开仓到平仓每一步
+  python scripts/why.py --event E04624                            单个操作
   python scripts/why.py --idea P7 --from 2025-01 --to 2025-06     理念事件:某条理念那段时间怎么说、同场做了什么
   python scripts/why.py --date 2025-03-27                         某一天:小结、全部操作、讲到的理念
   python scripts/why.py --daily                                   最新一场直播的每日总结(--daily 2026-10-21 指定日期,--daily list 列出全部)
@@ -18,7 +18,7 @@
   python scripts/why.py --scorecard                               分类成绩单:哪类买入/离场/扛单赚钱(--scorecard 选股|离场|硬扛|大方向|期货|言行 只看一块)
   python scripts/why.py --dossier TSLA                            个股档案:一只票的看法演变、持仓段结果、复盘、未了结预设
   python scripts/why.py --open                                    数据里还没见平仓的持仓段(和真实持仓对账用;--open all 不限最近 180 天)
-  python scripts/why.py --flag E03882 --note "实际是 TSLL"         更正入口:记一条更正/补充(--tag 事后补充;--flag list 看已记的)
+  python scripts/why.py --flag E03928 --note "实际是 TSLL"         更正入口:记一条更正/补充(--tag 事后补充;--flag list 看已记的)
   python scripts/why.py --unverified                              只有本人能核实的条目(--unverified ticker|reason 逐条列)
   python scripts/why.py --sql "select …"                          自由统计:对数据库提问(--sql schema 看表和列;只读)
   python scripts/why.py --ref overview                            参考资料:一页结论、已知问题、战绩报告、失误与修正版…(--ref list)
@@ -351,16 +351,20 @@ def pos_checks(db, p):
     out = []
     if p.get('sample') == '留出':
         out.append('  - 事后检验:留出期,不进判定')
+    if p.get('test_exclude'):
+        out.append('  - 不进事后检验:' + {'intraday': '当天开当天平(日内)', 'option_unclosed': '期权段没有平仓记录'}.get(p['test_exclude'], p['test_exclude']))
+    grp = lambda x: (lambda e: f"(按持仓组 {x['by_group']} 算,从组里第一笔 {e['start'] if e else '?'} 起;同一次看好只算一次)")(
+        db.pos.get('P' + x['by_group'][1:])) if x.get('by_group') else ''
     if p.get('B'):
         b = p['B']
-        out.append(f"  - 入场后 12 周(B 口径):标的 {b['r']:+.1%} / QQQ {b['q']:+.1%} / 超额 {b['excess']:+.1%}")
+        out.append(f"  - 入场后 12 周(B 口径):标的 {b['r']:+.1%} / QQQ {b['q']:+.1%} / 超额 {b['excess']:+.1%}{grp(b)}")
     if p.get('D'):
         d = p['D']
         line = '杠杆 ETF −25%' if d.get('levered') else '正股 −15%'
         rec = f"已回本(用 {d['days_to_recover']} 天)" if d.get('recovered') else '没回本'
         diff = f"继续拿比当天止损 {d['diff']:+.1%}" if d.get('diff') is not None else '继续拿的结果未知(数据不全)'
         dd = f",最大浮亏 {d['max_dd']:.1%}" if d.get('max_dd') is not None else ''
-        out.append(f"  - D 口径:{d['trigger']} 跌破止损线({line}),之后{diff}{dd},{rec}")
+        out.append(f"  - D 口径:{d['trigger']} 跌破止损线({line}),之后{diff}{dd},{rec}{grp(d)}")
     for k in p.get('kchecks') or []:
         out.append(f"  - 再犯检测 {k['k']}({db.mis_name(k['b'])}):{k['note']}")
     sz = p.get('size')
