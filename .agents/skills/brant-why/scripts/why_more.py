@@ -168,14 +168,14 @@ def scorecard(db, arg):
         out += [_row(f'{k}(2021-12 是他自述转型的时间)', v) for k, v in (st.get('period') or {}).items()]
         out.append('### 按他语气里的把握(抽卡时按说话的确定程度标的;「无」= 喊单没写理由)')
         out += [_row(k, (st.get('conviction') or {}).get(k)) for k in ('强', '中', '弱', '无')]
-        out.append('### 按仓位大小(看原话里怎么说;没说大小的占多数;这一组是按修订前的记录算的)')
+        out.append('### 按仓位大小(看开仓原话里怎么说;没说大小的占绝大多数,大仓、小仓都只有十几组;修订版 4,按持仓组)')
         for k, lab in (('大仓', '原话说重仓/满仓/半仓'), ('小仓', '原话说小仓/试仓/博一下'), ('没说', '没说大小')):
             s = ((sc.get('size') or {}).get(k) or {}).get('B')
             if s:
-                out.append(_row(lab, s))
+                out.append(_row(lab, s, unit='组'))
         su = sc.get('size_usd') or {}
         if su.get('hi'):
-            out.append(f"- 喊单写了金额的 {su.get('n')} 段(中位约 ${su.get('median_usd', 0):,.0f},展示账户,只作相对参考):"
+            out.append(f"- 喊单写了金额的 {su.get('n')} 组(中位约 ${su.get('median_usd', 0):,.0f},展示账户,只作相对参考):"
                        f"金额大的一半 {su['hi']['mean']:+.1%}{_ci(su['hi'].get('ci'))};小的一半 {su['lo']['mean']:+.1%}{_ci(su['lo'].get('ci'))}")
         out.append('### 回避、做空、实际持有期')
         out.append(_row('说「不买/别碰」之后 12 周,那只票相对 QQQ 取负(正 = 回避对了)', b.get('avoid_accuracy'), '说对', '次'))
