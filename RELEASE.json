@@ -1,10 +1,10 @@
 {
- "exported": "2026-11-16T02:31:59",
+ "exported": "2026-11-17T02:41:34",
  "data_end": "2026-11-11",
- "source": "brant-lens 18f0d9c",
+ "source": "brant-lens be9c295",
  "counts": {
-  "trades": 6683,
-  "positions": 512,
+  "trades": 6682,
+  "positions": 511,
   "ideas": 23531,
   "rules": 1015,
   "presets": 113,
@@ -12,5 +12,5 @@
   "daily": 23
  },
  "files": 962,
- "bytes": 70867857
+ "bytes": 70869318
 }
